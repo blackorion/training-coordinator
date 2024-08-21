@@ -8,7 +8,7 @@ const bot = new Bot(token);
 
 const users = new Set<number>();
 const appKeyboard = new Keyboard()
-    .webApp("Опубликовать тренировку", `${webappUrl}/events/create`);
+    .webApp("Опубликовать тренировку", `${webappUrl}/#/events/create`);
 
 bot.command("start", (ctx) => ctx.reply("Welcome! Up and running.", { reply_markup: appKeyboard }));
 

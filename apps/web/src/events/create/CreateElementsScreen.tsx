@@ -4,7 +4,7 @@ import WebApp from "@twa-dev/sdk";
 
 export const CreateElementsScreen: FC = () => {
     const handleSubmit = (props: Inputs) => WebApp.sendData(
-        JSON.stringify({ ...props, action: 'publish_event' })
+        JSON.stringify({ action: 'publish_event', data: props })
     );
 
     return (

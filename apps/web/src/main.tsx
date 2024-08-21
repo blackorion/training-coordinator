@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createHashRouter, RouterProvider } from 'react-router-dom';
 import './index.css'
 import { CreateElementsScreen } from "./events/create/CreateElementsScreen.tsx";
 import WebApp from "@twa-dev/sdk";
@@ -8,7 +8,7 @@ import ErrorScreen from "./ErrorScreen.tsx";
 
 WebApp.ready();
 
-const router = createBrowserRouter([
+const router = createHashRouter([
     {
         path: '/',
         element: <div>Training Coordinator App</div>,

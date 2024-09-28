@@ -34,7 +34,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn
+        run: yarn --immutable
 
       - name: Build
         run: yarn build --filter=web
@@ -51,3 +51,53 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.docker-tag.outputs.tag}}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Get commit hash
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Generate docker tag
+        id: docker-tag
+        run: echo "tag=${{ steps.package-version.outputs.current-version}}-${{ steps.vars.outputs.sha_short }}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_LOGIN }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Docker login
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/training-coordinator-bot
+          tags: |
+            latest
+            ${{ steps.docker-tag.outputs.tag}}
+          labels: |
+            latest
+            ${{ steps.docker-tag.outputs.tag}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

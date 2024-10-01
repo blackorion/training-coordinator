@@ -73,12 +73,6 @@ jobs:
         id: docker-tag
         run: echo "tag=${{ steps.package-version.outputs.current-version}}-${{ steps.vars.outputs.sha_short }}" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_LOGIN }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Docker login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 

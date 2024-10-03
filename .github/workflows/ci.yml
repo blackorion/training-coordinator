@@ -69,6 +69,8 @@ jobs:
       - name: get-npm-version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: apps/bot
 
       - name: Get commit hash
         id: vars
@@ -100,3 +102,42 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy_to_vm:
+    needs: push_to_registry
+    name: Deploy application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker-compose
+
+      - name: Substitute Secrets
+        uses: Lambdaspire/action-substitute-secrets-in-file@v1.0.0
+        with:
+          file: docker-compose/.env.template
+          output: docker-compose/.env
+          tokenPattern: ${TOKEN}
+          secretsJson: ${{ toJSON(secrets) }}
+
+      - name: Set Docker tag in .env file
+        id: tag
+        env:
+          TAG: ${{needs.push_to_registry.outputs.tag}}
+        run: |
+          ls -la
+          rm -f docker-compose/.env.template
+          sed -i "s/###TAG###/${TAG}/g" docker-compose/.env
+          cat docker-compose/.env
+
+      - uses: masterjanic/docker-compose-ssh-deployment@master
+        name: Docker-Stack Remote Deployment
+        with:
+          ssh_host: vpn.cybermax.spb.ru
+          ssh_private_key: ${{ secrets.SSH_DEPLOY_KEY }}
+          ssh_user: training-coordinator
+          use_stack: 'true'
+          docker_compose_filename: docker-compose/docker-compose.yml
+          tar_package_operation_modifiers: --exclude *.json *.lock *.md

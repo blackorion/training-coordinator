@@ -1,0 +1,12 @@
+version: "3.9"
+name: bot
+
+services:
+  app:
+    image: "ghcr.io/blackorion/training-coordinator-bot:${TAG:?Error: TAG is required}"
+    env_file:
+      - ./.env
+    volumes:
+      - sqlite-training:/application/db
+volumes:
+  sqlite-training:

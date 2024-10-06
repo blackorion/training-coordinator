@@ -140,4 +140,4 @@ jobs:
           ssh_user: training-coordinator
           use_stack: 'true'
           docker_compose_filename: docker-compose/docker-compose.yml
-          tar_package_operation_modifiers: --exclude *.json *.lock *.md
+          tar_package_operation_modifiers: --exclude=*.json --exclude=*.lock --exclude=*.md --exclude=.* --exclude=**/.git/*

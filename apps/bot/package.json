@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "./dist/index.cjs",
   "license": "MIT",
-  "private": "true",
   "scripts": {
     "dev": "tsx watch index.ts",
     "build": "pkgroll",

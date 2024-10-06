@@ -3,7 +3,6 @@ name: Deploy static content to Pages
 on:
   push:
     branches: [ 'main' ]
-
   workflow_dispatch:
 
 # Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
@@ -23,6 +22,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn
+        run: yarn --immutable
 
       - name: Build
         run: yarn build --filter=web
@@ -51,3 +51,93 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    outputs:
+      tag: ${{ steps.docker-tag.outputs.tag}}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: apps/bot
+
+      - name: Get commit hash
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Generate docker tag
+        id: docker-tag
+        run: echo "tag=${{ steps.package-version.outputs.current-version}}-${{ steps.vars.outputs.sha_short }}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker login
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/training-coordinator-bot
+          tags: |
+            latest
+            ${{ steps.docker-tag.outputs.tag}}
+          labels: |
+            latest
+            ${{ steps.docker-tag.outputs.tag}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy_to_vm:
+    needs: push_to_registry
+    name: Deploy application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker-compose
+
+      - name: Substitute Secrets
+        uses: Lambdaspire/action-substitute-secrets-in-file@v1.0.0
+        with:
+          file: docker-compose/.env.template
+          output: docker-compose/.env
+          tokenPattern: ${TOKEN}
+          secretsJson: ${{ toJSON(secrets) }}
+
+      - name: Set Docker tag in .env file
+        id: tag
+        env:
+          TAG: ${{needs.push_to_registry.outputs.tag}}
+        run: |
+          ls -la
+          rm -f docker-compose/.env.template
+          sed -i "s/###TAG###/${TAG}/g" docker-compose/.env
+          cat docker-compose/.env
+
+      - uses: masterjanic/docker-compose-ssh-deployment@master
+        name: Docker-Stack Remote Deployment
+        with:
+          ssh_host: vpn.cybermax.spb.ru
+          ssh_private_key: ${{ secrets.SSH_DEPLOY_KEY }}
+          ssh_user: training-coordinator
+          use_stack: 'true'
+          docker_compose_filename: docker-compose/docker-compose.yml
+          tar_package_operation_modifiers: --exclude *.json *.lock *.md

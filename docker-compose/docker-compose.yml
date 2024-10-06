@@ -4,6 +4,7 @@ name: bot
 services:
   app:
     image: "ghcr.io/blackorion/training-coordinator-bot:${TAG:?Error: TAG is required}"
+    restart: always
     env_file:
       - ./.env
     volumes:

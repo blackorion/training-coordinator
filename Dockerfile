@@ -8,6 +8,6 @@ RUN yarn install --immutable && \
 FROM node:20-alpine
 WORKDIR /application
 COPY --from=builder /application/apps/bot/dist ./
-COPY --from=builder /application/apps/bot/.migrations ./.migrations
+#COPY --from=builder /application/apps/bot/.migrations ./.migrations
 COPY --from=builder /application/node_modules ./node_modules
 ENTRYPOINT ["node", "/application/index.cjs"]
